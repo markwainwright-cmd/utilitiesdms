@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Utilities Influencer–Decision Maker Network</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Space+Mono:wght@400;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0e1a;
+    font-family: 'DM Sans', sans-serif;
+    color: #c8d0e0;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  #canvas-bg {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+    background:
+      radial-gradient(ellipse at 20% 50%, rgba(20,60,90,0.3) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 30%, rgba(50,20,70,0.2) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 80%, rgba(10,40,60,0.25) 0%, transparent 60%),
+      #0a0e1a;
+  }
+
+  svg {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+  }
+
+  /* Header */
+  .header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    padding: 20px 32px 16px;
+    background: linear-gradient(to bottom, rgba(10,14,26,0.95) 0%, rgba(10,14,26,0.6) 70%, transparent 100%);
+    pointer-events: none;
+  }
+  .header h1 {
+    font-family: 'Space Mono', monospace;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #e8edf5;
+    margin-bottom: 4px;
+  }
+  .header .subtitle {
+    font-size: 12px;
+    color: #6b7a96;
+    letter-spacing: 0.5px;
+  }
+
+  /* Legend */
+  .legend {
+    position: fixed;
+    bottom: 24px;
+    left: 32px;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: rgba(10,14,26,0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(100,120,160,0.15);
+    border-radius: 12px;
+    padding: 16px 20px;
+  }
+  .legend-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #6b7a96;
+    margin-bottom: 2px;
+  }
+  .legend-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: #94a3bf;
+  }
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .legend-line {
+    width: 28px;
+    height: 3px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* Stats panel */
+  .stats {
+    position: fixed;
+    bottom: 24px;
+    right: 32px;
+    z-index: 100;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    background: rgba(10,14,26,0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(100,120,160,0.15);
+    border-radius: 12px;
+    padding: 16px 24px;
+  }
+  .stat-block {
+    text-align: center;
+  }
+  .stat-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: #e8edf5;
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #6b7a96;
+    margin-top: 4px;
+  }
+
+  /* Controls */
+  .controls {
+    position: fixed;
+    top: 80px;
+    right: 32px;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: rgba(10,14,26,0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(100,120,160,0.15);
+    border-radius: 12px;
+    padding: 14px 18px;
+  }
+  .controls .ctrl-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #6b7a96;
+    margin-bottom: 4px;
+  }
+  .controls label {
+    font-size: 12px;
+    color: #94a3bf;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 3px 0;
+    transition: color 0.2s;
+  }
+  .controls label:hover { color: #e8edf5; }
+  .controls input[type="checkbox"] {
+    accent-color: #4ecdc4;
+    width: 14px;
+    height: 14px;
+  }
+  .controls input[type="range"] {
+    width: 100%;
+    accent-color: #4ecdc4;
+    margin-top: 4px;
+  }
+  .range-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #6b7a96;
+  }
+
+  /* Tooltip */
+  .tooltip {
+    position: fixed;
+    z-index: 200;
+    background: rgba(14,18,32,0.95);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(100,130,180,0.25);
+    border-radius: 10px;
+    padding: 14px 18px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    max-width: 320px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  .tooltip.visible { opacity: 1; }
+  .tooltip .tt-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: #e8edf5;
+    margin-bottom: 6px;
+  }
+  .tooltip .tt-type {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .tooltip .tt-stat {
+    font-size: 12px;
+    color: #94a3bf;
+    line-height: 1.6;
+  }
+  .tooltip .tt-stat strong {
+    color: #c8d0e0;
+  }
+  .tooltip .tt-connections {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(100,130,180,0.15);
+    font-size: 11px;
+    color: #6b7a96;
+    line-height: 1.5;
+  }
+
+  /* Edge tooltip */
+  .edge-tooltip {
+    position: fixed;
+    z-index: 200;
+    background: rgba(14,18,32,0.95);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(100,130,180,0.25);
+    border-radius: 10px;
+    padding: 12px 16px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    max-width: 280px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  .edge-tooltip.visible { opacity: 1; }
+  .edge-tooltip .et-header {
+    font-size: 12px;
+    color: #e8edf5;
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+  .edge-tooltip .et-stat {
+    font-size: 11px;
+    color: #94a3bf;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-bg"></div>
+
+<div class="header">
+  <h1>Influencer ↔ Decision Maker Network</h1>
+  <div class="subtitle">Utilities sector LinkedIn engagement map — 28 influencers, 61 decision makers, 101 connections</div>
+</div>
+
+<div class="controls">
+  <div class="ctrl-title">Display</div>
+  <label><input type="checkbox" id="showLabels" checked> Show labels</label>
+  <label><input type="checkbox" id="showBidiOnly"> Bidirectional only</label>
+  <label><input type="checkbox" id="highlightHubs"> Highlight hubs</label>
+  <div style="margin-top:8px">
+    <div class="range-label"><span>Min. interactions</span><span id="minVal">1</span></div>
+    <input type="range" id="minInteractions" min="1" max="5" value="1" step="1">
+  </div>
+</div>
+
+<div class="legend">
+  <div class="legend-title">Nodes</div>
+  <div class="legend-row"><div class="legend-dot" style="background:#4ecdc4;"></div> Influencer</div>
+  <div class="legend-row"><div class="legend-dot" style="background:#ff6b6b;"></div> Decision Maker</div>
+  <div class="legend-title" style="margin-top:6px;">Edges</div>
+  <div class="legend-row"><div class="legend-line" style="background:rgba(78,205,196,0.5);"></div> Influencer → DM</div>
+  <div class="legend-row"><div class="legend-line" style="background:rgba(255,107,107,0.5);"></div> DM → Influencer</div>
+  <div class="legend-row"><div class="legend-line" style="background:linear-gradient(90deg,#4ecdc4,#ff6b6b); height:4px;"></div> Bidirectional</div>
+  <div class="legend-row" style="font-size:11px;color:#556;">Line thickness = interaction volume</div>
+</div>
+
+<div class="stats">
+  <div class="stat-block">
+    <div class="stat-num">28</div>
+    <div class="stat-label">Influencers</div>
+  </div>
+  <div class="stat-block">
+    <div class="stat-num">61</div>
+    <div class="stat-label">Decision Makers</div>
+  </div>
+  <div class="stat-block">
+    <div class="stat-num">7</div>
+    <div class="stat-label">Bidirectional</div>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+<div class="edge-tooltip" id="edgeTooltip"></div>
+
+<svg id="network"></svg>
+
+<script>
+const DATA = {"nodes":[{"id":"Abbie Badcock-Broe","type":"influencer","interactions":4,"followers":4987,"connections":3849,"dm_count":4},{"id":"Adam Berman","type":"influencer","interactions":2,"followers":1518,"connections":1211,"dm_count":2},{"id":"Adele Ramsden","type":"influencer","interactions":1,"followers":520,"connections":505,"dm_count":1},{"id":"Alex Plant","type":"influencer","interactions":4,"followers":2940,"connections":2238,"dm_count":3},{"id":"Angela Love","type":"influencer","interactions":7,"followers":3554,"connections":2444,"dm_count":4},{"id":"Aravindha Loganathan","type":"influencer","interactions":2,"followers":15949,"connections":9532,"dm_count":2},{"id":"Arthur Willey","type":"influencer","interactions":3,"followers":576,"connections":558,"dm_count":3},{"id":"Graham Commons MBE","type":"influencer","interactions":3,"followers":664,"connections":657,"dm_count":2},{"id":"Guto Owen","type":"influencer","interactions":5,"followers":3089,"connections":2804,"dm_count":4},{"id":"Kate Mulvany","type":"influencer","interactions":13,"followers":3822,"connections":3237,"dm_count":7},{"id":"Lamé Verre, MBA, FEI","type":"influencer","interactions":3,"followers":9550,"connections":11394,"dm_count":3},{"id":"Laura Sandys CBE","type":"influencer","interactions":9,"followers":8625,"connections":8020,"dm_count":9},{"id":"Maria Blakley","type":"influencer","interactions":9,"followers":7424,"connections":5480,"dm_count":7},{"id":"Matthew Harvey","type":"influencer","interactions":3,"followers":281,"connections":282,"dm_count":2},{"id":"Matthew Knight","type":"influencer","interactions":3,"followers":5240,"connections":4557,"dm_count":3},{"id":"Monica Collings OBE","type":"influencer","interactions":15,"followers":11458,"connections":8416,"dm_count":10},{"id":"Opeyemi  Popoola","type":"influencer","interactions":2,"followers":934,"connections":912,"dm_count":2},{"id":"Peter Lever","type":"influencer","interactions":2,"followers":9084,"connections":8860,"dm_count":2},{"id":"Priya B.","type":"influencer","interactions":3,"followers":1616,"connections":1306,"dm_count":2},{"id":"Raymond Buchanan","type":"influencer","interactions":2,"followers":3121,"connections":1862,"dm_count":2},{"id":"Sbu Ntshalintshali Interim CEng MEI","type":"influencer","interactions":3,"followers":12109,"connections":8611,"dm_count":2},{"id":"Shauna Dubler","type":"influencer","interactions":4,"followers":1578,"connections":1547,"dm_count":4},{"id":"Simon Dray","type":"influencer","interactions":2,"followers":1709,"connections":1677,"dm_count":2},{"id":"Simon Virley CB FEI","type":"influencer","interactions":10,"followers":6162,"connections":5328,"dm_count":7},{"id":"Stephen Smith","type":"influencer","interactions":4,"followers":3623,"connections":3150,"dm_count":2},{"id":"Stephen Woodhouse","type":"influencer","interactions":5,"followers":5529,"connections":5099,"dm_count":4},{"id":"Swetta Coopamah","type":"influencer","interactions":3,"followers":4079,"connections":4070,"dm_count":2},{"id":"Tom Glover","type":"influencer","interactions":5,"followers":5587,"connections":4705,"dm_count":4},{"id":"ADE","type":"decision_maker","interactions":2,"inf_count":2},{"id":"Abbie Sampson","type":"decision_maker","interactions":5,"inf_count":3},{"id":"Adam Berman","type":"decision_maker","interactions":3,"inf_count":3},{"id":"Akshay Kaul","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Alex Plant","type":"decision_maker","interactions":2,"inf_count":2},{"id":"Alice Barrs","type":"decision_maker","interactions":2,"inf_count":2},{"id":"Alice Delahunty FREng","type":"decision_maker","interactions":2,"inf_count":1},{"id":"Alistair McGirr","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Alistair Phillips-Davies","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Andy Keith","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Anish De","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Bill Esterson","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Chris Weston","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Daisy Powell-Chandler","type":"decision_maker","interactions":5,"inf_count":2},{"id":"David Clubb","type":"decision_maker","interactions":1,"inf_count":1},{"id":"David Shukman","type":"decision_maker","interactions":1,"inf_count":1},{"id":"David Watson","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Dhara Vyas FEI","type":"decision_maker","interactions":16,"inf_count":9},{"id":"Dr Angela Needle FEI","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Dr Nick Wayth CEng FEI FIMechE","type":"decision_maker","interactions":16,"inf_count":7},{"id":"Ed Rees","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Energy Institute","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Energy UK","type":"decision_maker","interactions":4,"inf_count":4},{"id":"Fintan Slye","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Gareth Ellery","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Greg Jackson","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Harry Atkinson","type":"decision_maker","interactions":3,"inf_count":1},{"id":"IWA UK Committee","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Jesusoorefunmi Olaoye","type":"decision_maker","interactions":2,"inf_count":2},{"id":"Juliet Davenport","type":"decision_maker","interactions":2,"inf_count":2},{"id":"Juliette Sanders (Killah Jules)","type":"decision_maker","interactions":6,"inf_count":4},{"id":"Karl Bach","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Kate Mulvany","type":"decision_maker","interactions":2,"inf_count":2},{"id":"Katie Alexander","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Keith Anderson","type":"decision_maker","interactions":3,"inf_count":2},{"id":"Kelvin Ross","type":"decision_maker","interactions":3,"inf_count":3},{"id":"Luke Sweeney","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Marja Salonen","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Marzia Zafar","type":"decision_maker","interactions":3,"inf_count":2},{"id":"Mike Barry","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Monica Collings OBE","type":"decision_maker","interactions":3,"inf_count":3},{"id":"Ned A.","type":"decision_maker","interactions":1,"inf_count":1},{"id":"POWERful Women","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Raymond Buchanan","type":"decision_maker","interactions":2,"inf_count":1},{"id":"Rob Cooke","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Ross Easton","type":"decision_maker","interactions":2,"inf_count":2},{"id":"Sam Hollister","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Scottish Water","type":"decision_maker","interactions":1,"inf_count":1},{"id":"ScottishPower","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Simon Evans","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Simon Parsons","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Simon Rogerson","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Simon Virley CB FEI","type":"decision_maker","interactions":4,"inf_count":3},{"id":"Steven M.","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Stuart King","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Surbjit Laroya-Annan","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Tackling Inclusion and Diversity in Energy (TIDE)","type":"decision_maker","interactions":1,"inf_count":1},{"id":"The Energy and Utilities Alliance (EUA)","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Tom Glover","type":"decision_maker","interactions":1,"inf_count":1},{"id":"WUN - Womens Utilities Network","type":"decision_maker","interactions":1,"inf_count":1},{"id":"Zoe Yujnovich","type":"decision_maker","interactions":1,"inf_count":1}],"edges":[{"source":"Stephen Smith","target":"Zoe Yujnovich","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Stephen Smith","target":"Harry Atkinson","inf_to_dm":1,"dm_to_inf":2,"total":3,"bidirectional":true},{"source":"Tom Glover","target":"Simon Virley CB FEI","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Laura Sandys CBE","target":"Alistair Phillips-Davies","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Maria Blakley","target":"Juliet Davenport","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Peter Lever","target":"Greg Jackson","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Matthew Knight","target":"Energy UK","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Kate Mulvany","target":"Daisy Powell-Chandler","inf_to_dm":2,"dm_to_inf":2,"total":4,"bidirectional":true},{"source":"Stephen Woodhouse","target":"Akshay Kaul","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Graham Commons MBE","target":"Andy Keith","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Graham Commons MBE","target":"Alice Delahunty FREng","inf_to_dm":2,"dm_to_inf":0,"total":2,"bidirectional":false},{"source":"Peter Lever","target":"Simon Rogerson","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Matthew Knight","target":"Luke Sweeney","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Priya B.","target":"Marzia Zafar","inf_to_dm":2,"dm_to_inf":0,"total":2,"bidirectional":false},{"source":"Laura Sandys CBE","target":"Marzia Zafar","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Stephen Woodhouse","target":"Karl Bach","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Tom Glover","target":"Alice Barrs","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Simon Virley CB FEI","target":"Alice Barrs","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Simon Virley CB FEI","target":"Dr Angela Needle FEI","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Simon Virley CB FEI","target":"Dr Nick Wayth CEng FEI FIMechE","inf_to_dm":2,"dm_to_inf":2,"total":4,"bidirectional":true},{"source":"Angela Love","target":"Abbie Sampson","inf_to_dm":2,"dm_to_inf":0,"total":2,"bidirectional":false},{"source":"Swetta Coopamah","target":"Abbie Sampson","inf_to_dm":2,"dm_to_inf":0,"total":2,"bidirectional":false},{"source":"Tom Glover","target":"ADE","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Laura Sandys CBE","target":"ADE","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Laura Sandys CBE","target":"Juliet Davenport","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Guto Owen","target":"Simon Virley CB FEI","inf_to_dm":2,"dm_to_inf":0,"total":2,"bidirectional":false},{"source":"Opeyemi  Popoola","target":"Simon Virley CB FEI","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Simon Virley CB FEI","target":"Anish De","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Kate Mulvany","target":"Dhara Vyas FEI","inf_to_dm":3,"dm_to_inf":0,"total":3,"bidirectional":false},{"source":"Abbie Badcock-Broe","target":"Monica Collings OBE","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Simon Virley CB FEI","target":"The Energy and Utilities Alliance (EUA)","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Simon Virley CB FEI","target":"Surbjit Laroya-Annan","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Matthew Harvey","target":"Keith Anderson","inf_to_dm":2,"dm_to_inf":0,"total":2,"bidirectional":false},{"source":"Adele Ramsden","target":"Steven M.","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Laura Sandys CBE","target":"Energy Institute","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Angela Love","target":"Dhara Vyas FEI","inf_to_dm":3,"dm_to_inf":0,"total":3,"bidirectional":false},{"source":"Kate Mulvany","target":"Monica Collings OBE","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Matthew Harvey","target":"ScottishPower","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Maria Blakley","target":"Keith Anderson","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Guto Owen","target":"Energy UK","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Sbu Ntshalintshali Interim CEng MEI","target":"Dr Nick Wayth CEng FEI FIMechE","inf_to_dm":2,"dm_to_inf":0,"total":2,"bidirectional":false},{"source":"Maria Blakley","target":"POWERful Women","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Monica Collings OBE","target":"Dhara Vyas FEI","inf_to_dm":2,"dm_to_inf":1,"total":3,"bidirectional":true},{"source":"Monica Collings OBE","target":"Abbie Sampson","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Maria Blakley","target":"Monica Collings OBE","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Angela Love","target":"Fintan Slye","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Abbie Badcock-Broe","target":"Dhara Vyas FEI","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Sbu Ntshalintshali Interim CEng MEI","target":"Stuart King","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Priya B.","target":"Ross Easton","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Guto Owen","target":"Daisy Powell-Chandler","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Laura Sandys CBE","target":"Dr Nick Wayth CEng FEI FIMechE","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Kate Mulvany","target":"Juliette Sanders (Killah Jules)","inf_to_dm":2,"dm_to_inf":0,"total":2,"bidirectional":false},{"source":"Opeyemi  Popoola","target":"Jesusoorefunmi Olaoye","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Stephen Woodhouse","target":"Dhara Vyas FEI","inf_to_dm":2,"dm_to_inf":0,"total":2,"bidirectional":false},{"source":"Lamé Verre, MBA, FEI","target":"Dr Nick Wayth CEng FEI FIMechE","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Abbie Badcock-Broe","target":"Dr Nick Wayth CEng FEI FIMechE","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Monica Collings OBE","target":"Adam Berman","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Aravindha Loganathan","target":"Simon Evans","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Maria Blakley","target":"Dr Nick Wayth CEng FEI FIMechE","inf_to_dm":2,"dm_to_inf":1,"total":3,"bidirectional":true},{"source":"Swetta Coopamah","target":"Tackling Inclusion and Diversity in Energy (TIDE)","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Monica Collings OBE","target":"WUN - Womens Utilities Network","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Maria Blakley","target":"Rob Cooke","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Monica Collings OBE","target":"Dr Nick Wayth CEng FEI FIMechE","inf_to_dm":3,"dm_to_inf":1,"total":4,"bidirectional":true},{"source":"Arthur Willey","target":"Katie Alexander","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Arthur Willey","target":"Juliette Sanders (Killah Jules)","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Monica Collings OBE","target":"Bill Esterson","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Laura Sandys CBE","target":"Mike Barry","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Guto Owen","target":"David Clubb","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Adam Berman","target":"Gareth Ellery","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Tom Glover","target":"Juliette Sanders (Killah Jules)","inf_to_dm":1,"dm_to_inf":1,"total":2,"bidirectional":true},{"source":"Aravindha Loganathan","target":"David Shukman","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Shauna Dubler","target":"Ned A.","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Kate Mulvany","target":"Adam Berman","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Laura Sandys CBE","target":"Adam Berman","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Arthur Willey","target":"Energy UK","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Laura Sandys CBE","target":"Dhara Vyas FEI","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Lamé Verre, MBA, FEI","target":"Dhara Vyas FEI","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Angela Love","target":"Energy UK","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Shauna Dubler","target":"Sam Hollister","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Abbie Badcock-Broe","target":"Kelvin Ross","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Lamé Verre, MBA, FEI","target":"Kelvin Ross","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Monica Collings OBE","target":"Kelvin Ross","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Kate Mulvany","target":"Ed Rees","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Matthew Knight","target":"Dhara Vyas FEI","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Simon Dray","target":"Chris Weston","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Raymond Buchanan","target":"Alex Plant","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Simon Dray","target":"Alex Plant","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Alex Plant","target":"IWA UK Committee","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Alex Plant","target":"Scottish Water","inf_to_dm":1,"dm_to_inf":0,"total":1,"bidirectional":false},{"source":"Stephen Woodhouse","target":"Marja Salonen","inf_to_dm":0,"dm_to_inf":1,"total":1,"bidirectional":false},{"source":"Maria Blakley","target":"Kate Mulvany","inf_to_dm":0,"dm_to_inf":1,"total":1,"bidirectional":false},{"source":"Monica Collings OBE","target":"Jesusoorefunmi Olaoye","inf_to_dm":0,"dm_to_inf":1,"total":1,"bidirectional":false},{"source":"Monica Collings OBE","target":"Simon Parsons","inf_to_dm":0,"dm_to_inf":1,"total":1,"bidirectional":false},{"source":"Simon Virley CB FEI","target":"Tom Glover","inf_to_dm":0,"dm_to_inf":1,"total":1,"bidirectional":false},{"source":"Kate Mulvany","target":"David Watson","inf_to_dm":0,"dm_to_inf":1,"total":1,"bidirectional":false},{"source":"Adam Berman","target":"Alistair McGirr","inf_to_dm":0,"dm_to_inf":1,"total":1,"bidirectional":false},{"source":"Alex Plant","target":"Raymond Buchanan","inf_to_dm":0,"dm_to_inf":2,"total":2,"bidirectional":false},{"source":"Monica Collings OBE","target":"Kate Mulvany","inf_to_dm":0,"dm_to_inf":1,"total":1,"bidirectional":false},{"source":"Shauna Dubler","target":"Juliette Sanders (Killah Jules)","inf_to_dm":0,"dm_to_inf":1,"total":1,"bidirectional":false},{"source":"Raymond Buchanan","target":"Ross Easton","inf_to_dm":0,"dm_to_inf":1,"total":1,"bidirectional":false},{"source":"Shauna Dubler","target":"Dhara Vyas FEI","inf_to_dm":0,"dm_to_inf":1,"total":1,"bidirectional":false}]};
+
+const W = window.innerWidth, H = window.innerHeight;
+const svg = d3.select('#network').attr('width', W).attr('height', H);
+const tooltip = document.getElementById('tooltip');
+const edgeTooltip = document.getElementById('edgeTooltip');
+
+// Give every node a unique _key (type-prefixed) so D3 forceLink never collides
+const nodes = DATA.nodes.map(n => ({...n, _key: n.type + '::' + n.id}));
+const nodeByKey = new Map(nodes.map(n => [n._key, n]));
+
+// Resolve an edge endpoint: source is always an influencer, target always a DM
+const resolve = (id, preferType) => {
+  const preferred = nodeByKey.get(preferType + '::' + id);
+  if (preferred) return preferred._key;
+  // fallback: try the other type
+  for (const n of nodes) if (n.id === id) return n._key;
+  return null;
+};
+
+const links = DATA.edges.map(e => {
+  const src = resolve(e.source, 'influencer');
+  const tgt = resolve(e.target, 'decision_maker');
+  return src && tgt ? {...e, source: src, target: tgt} : null;
+}).filter(Boolean);
+
+// Scales
+const infColor = '#4ecdc4';
+const dmColor = '#ff6b6b';
+const maxInteractions = d3.max(nodes, d => d.interactions) || 1;
+const radiusScale = d3.scaleSqrt().domain([1, maxInteractions]).range([6, 28]);
+
+// Force simulation
+// Helper to get node object from a link endpoint (may be string _key or object)
+const getNode = (ref) => typeof ref === 'object' ? ref : nodeByKey.get(ref);
+
+const simulation = d3.forceSimulation(nodes)
+  .force('link', d3.forceLink(links).id(d => d._key).distance(d => d.bidirectional ? 80 : 120).strength(d => d.bidirectional ? 0.4 : 0.15))
+  .force('charge', d3.forceManyBody().strength(d => d.type === 'influencer' ? -300 : -120))
+  .force('center', d3.forceCenter(W / 2, H / 2))
+  .force('collision', d3.forceCollide().radius(d => radiusScale(d.interactions) + 8))
+  .force('x', d3.forceX(d => d.type === 'influencer' ? W * 0.38 : W * 0.62).strength(0.06))
+  .force('y', d3.forceY(H / 2).strength(0.04));
+
+// Defs for gradients and glows
+const defs = svg.append('defs');
+
+// Glow filter
+const glowFilter = defs.append('filter').attr('id', 'glow').attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%');
+glowFilter.append('feGaussianBlur').attr('stdDeviation', '4').attr('result', 'blur');
+glowFilter.append('feMerge').selectAll('feMergeNode').data(['blur', 'SourceGraphic']).enter().append('feMergeNode').attr('in', d => d);
+
+const bidiGradient = defs.append('linearGradient').attr('id', 'bidiGrad').attr('gradientUnits', 'userSpaceOnUse');
+bidiGradient.append('stop').attr('offset', '0%').attr('stop-color', infColor);
+bidiGradient.append('stop').attr('offset', '100%').attr('stop-color', dmColor);
+
+// Draw elements
+const g = svg.append('g');
+
+// Zoom
+const zoom = d3.zoom().scaleExtent([0.3, 4]).on('zoom', e => g.attr('transform', e.transform));
+svg.call(zoom);
+
+// Edges
+const linkG = g.append('g');
+const linkElements = linkG.selectAll('line').data(links).enter().append('line')
+  .attr('stroke', d => {
+    if (d.bidirectional) return 'url(#bidiGrad)';
+    if (d.dm_to_inf > 0 && d.inf_to_dm === 0) return dmColor;
+    return infColor;
+  })
+  .attr('stroke-opacity', d => d.bidirectional ? 0.7 : 0.25)
+  .attr('stroke-width', d => Math.max(1.5, Math.min(d.total * 1.5, 6)))
+  .style('cursor', 'pointer')
+  .on('mouseenter', function(event, d) {
+    d3.select(this).attr('stroke-opacity', 1).attr('stroke-width', Math.max(3, d.total * 2));
+    const dir = [];
+    if (d.inf_to_dm > 0) dir.push(`<strong>${d.source.id}</strong> → ${d.target.id}: ${d.inf_to_dm} comment${d.inf_to_dm>1?'s':''}`);
+    if (d.dm_to_inf > 0) dir.push(`<strong>${d.target.id}</strong> → ${d.source.id}: ${d.dm_to_inf} comment${d.dm_to_inf>1?'s':''}`);
+    edgeTooltip.innerHTML = `
+      <div class="et-header">${d.bidirectional ? '⟷ Bidirectional' : '→ One-way'} · ${d.total} interaction${d.total>1?'s':''}</div>
+      <div class="et-stat">${dir.join('<br>')}</div>`;
+    edgeTooltip.classList.add('visible');
+    edgeTooltip.style.left = event.clientX + 12 + 'px';
+    edgeTooltip.style.top = event.clientY - 10 + 'px';
+  })
+  .on('mousemove', function(event) {
+    edgeTooltip.style.left = event.clientX + 12 + 'px';
+    edgeTooltip.style.top = event.clientY - 10 + 'px';
+  })
+  .on('mouseleave', function(event, d) {
+    d3.select(this).attr('stroke-opacity', d.bidirectional ? 0.7 : 0.25).attr('stroke-width', Math.max(1.5, Math.min(d.total * 1.5, 6)));
+    edgeTooltip.classList.remove('visible');
+  });
+
+// Node groups
+const nodeG = g.append('g');
+const nodeElements = nodeG.selectAll('g').data(nodes).enter().append('g')
+  .style('cursor', 'pointer')
+  .call(d3.drag()
+    .on('start', (e, d) => { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+    .on('drag', (e, d) => { d.fx = e.x; d.fy = e.y; })
+    .on('end', (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; })
+  );
+
+// Outer glow ring for high-interaction nodes
+nodeElements.filter(d => d.interactions >= 8).append('circle')
+  .attr('r', d => radiusScale(d.interactions) + 4)
+  .attr('fill', 'none')
+  .attr('stroke', d => d.type === 'influencer' ? infColor : dmColor)
+  .attr('stroke-width', 1.5)
+  .attr('stroke-opacity', 0.3)
+  .attr('filter', 'url(#glow)');
+
+// Main circle
+nodeElements.append('circle')
+  .attr('r', d => radiusScale(d.interactions))
+  .attr('fill', d => d.type === 'influencer' ? infColor : dmColor)
+  .attr('fill-opacity', d => 0.15 + Math.min(d.interactions / maxInteractions, 0.6))
+  .attr('stroke', d => d.type === 'influencer' ? infColor : dmColor)
+  .attr('stroke-width', d => d.interactions >= 5 ? 2 : 1.2)
+  .attr('stroke-opacity', 0.8);
+
+// Labels
+const labelElements = nodeElements.append('text')
+  .text(d => {
+    const name = d.id;
+    return name.length > 22 ? name.substring(0, 20) + '…' : name;
+  })
+  .attr('dy', d => radiusScale(d.interactions) + 14)
+  .attr('text-anchor', 'middle')
+  .attr('fill', d => d.type === 'influencer' ? '#8ee8e0' : '#ffb0b0')
+  .attr('font-size', d => d.interactions >= 8 ? '11px' : d.interactions >= 4 ? '10px' : '9px')
+  .attr('font-family', "'DM Sans', sans-serif")
+  .attr('font-weight', d => d.interactions >= 8 ? '600' : '400')
+  .attr('opacity', d => d.interactions >= 3 ? 0.9 : 0.6)
+  .attr('pointer-events', 'none');
+
+// Hover interactions
+nodeElements.on('mouseenter', function(event, d) {
+  const connected = new Set();
+  links.forEach(l => {
+    const s = getNode(l.source);
+    const t = getNode(l.target);
+    if (s && s._key === d._key) connected.add(t._key);
+    if (t && t._key === d._key) connected.add(s._key);
+  });
+
+  nodeElements.select('circle:last-of-type').transition().duration(150)
+    .attr('fill-opacity', n => n._key === d._key || connected.has(n._key) ? 0.8 : 0.05)
+    .attr('stroke-opacity', n => n._key === d._key || connected.has(n._key) ? 1 : 0.15);
+  labelElements.transition().duration(150)
+    .attr('opacity', n => n._key === d._key || connected.has(n._key) ? 1 : 0.1);
+  linkElements.transition().duration(150)
+    .attr('stroke-opacity', l => {
+      const s = getNode(l.source);
+      const t = getNode(l.target);
+      return (s._key === d._key || t._key === d._key) ? 0.8 : 0.04;
+    });
+
+  // Tooltip
+  const connNames = [];
+  links.forEach(l => {
+    const s = getNode(l.source);
+    const t = getNode(l.target);
+    if (s && s._key === d._key) connNames.push(`→ ${t.id} (${l.total})`);
+    if (t && t._key === d._key) connNames.push(`← ${s.id} (${l.total})`);
+  });
+
+  let html = `<div class="tt-name">${d.id}</div>`;
+  html += `<div class="tt-type" style="color:${d.type==='influencer'?infColor:dmColor}">${d.type === 'influencer' ? 'Influencer' : 'Decision Maker'}</div>`;
+  html += `<div class="tt-stat">`;
+  html += `<strong>${d.interactions}</strong> total interactions<br>`;
+  if (d.type === 'influencer') {
+    html += `<strong>${(d.followers||0).toLocaleString()}</strong> followers · <strong>${(d.connections||0).toLocaleString()}</strong> connections<br>`;
+    html += `Connected to <strong>${d.dm_count||0}</strong> decision makers`;
+  } else {
+    html += `Connected to <strong>${d.inf_count||0}</strong> influencers`;
+  }
+  html += `</div>`;
+  if (connNames.length) {
+    html += `<div class="tt-connections">${connNames.slice(0,8).join('<br>')}${connNames.length > 8 ? '<br>…and '+(connNames.length-8)+' more' : ''}</div>`;
+  }
+  tooltip.innerHTML = html;
+  tooltip.classList.add('visible');
+  tooltip.style.left = event.clientX + 16 + 'px';
+  tooltip.style.top = event.clientY - 10 + 'px';
+})
+.on('mousemove', function(event) {
+  tooltip.style.left = event.clientX + 16 + 'px';
+  tooltip.style.top = event.clientY - 10 + 'px';
+})
+.on('mouseleave', function() {
+  nodeElements.select('circle:last-of-type').transition().duration(300)
+    .attr('fill-opacity', d => 0.15 + Math.min(d.interactions / maxInteractions, 0.6))
+    .attr('stroke-opacity', 0.8);
+  labelElements.transition().duration(300)
+    .attr('opacity', d => d.interactions >= 3 ? 0.9 : 0.6);
+  linkElements.transition().duration(300)
+    .attr('stroke-opacity', d => d.bidirectional ? 0.7 : 0.25);
+  tooltip.classList.remove('visible');
+});
+
+// Tick
+simulation.on('tick', () => {
+  linkElements
+    .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+    .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+  nodeElements.attr('transform', d => `translate(${d.x},${d.y})`);
+});
+
+// Controls
+document.getElementById('showLabels').addEventListener('change', function() {
+  labelElements.attr('display', this.checked ? null : 'none');
+});
+
+document.getElementById('showBidiOnly').addEventListener('change', function() {
+  const bidiOnly = this.checked;
+  linkElements.attr('display', d => bidiOnly && !d.bidirectional ? 'none' : null);
+  if (bidiOnly) {
+    const bidiNodes = new Set();
+    links.filter(l => l.bidirectional).forEach(l => {
+      bidiNodes.add(getNode(l.source)._key);
+      bidiNodes.add(getNode(l.target)._key);
+    });
+    nodeElements.attr('display', d => bidiNodes.has(d._key) ? null : 'none');
+  } else {
+    nodeElements.attr('display', null);
+  }
+});
+
+document.getElementById('highlightHubs').addEventListener('change', function() {
+  if (this.checked) {
+    nodeElements.select('circle:last-of-type').transition().duration(300)
+      .attr('fill-opacity', d => d.interactions >= 5 ? 0.85 : 0.06)
+      .attr('stroke-opacity', d => d.interactions >= 5 ? 1 : 0.15);
+    labelElements.transition().duration(300)
+      .attr('opacity', d => d.interactions >= 5 ? 1 : 0.1);
+    linkElements.transition().duration(300)
+      .attr('stroke-opacity', d => d.total >= 2 ? 0.6 : 0.04);
+  } else {
+    nodeElements.select('circle:last-of-type').transition().duration(300)
+      .attr('fill-opacity', d => 0.15 + Math.min(d.interactions / maxInteractions, 0.6))
+      .attr('stroke-opacity', 0.8);
+    labelElements.transition().duration(300)
+      .attr('opacity', d => d.interactions >= 3 ? 0.9 : 0.6);
+    linkElements.transition().duration(300)
+      .attr('stroke-opacity', d => d.bidirectional ? 0.7 : 0.25);
+  }
+});
+
+document.getElementById('minInteractions').addEventListener('input', function() {
+  const min = +this.value;
+  document.getElementById('minVal').textContent = min;
+  linkElements.attr('display', d => d.total < min ? 'none' : null);
+  const visibleNodes = new Set();
+  links.filter(l => l.total >= min).forEach(l => {
+    visibleNodes.add(getNode(l.source)._key);
+    visibleNodes.add(getNode(l.target)._key);
+  });
+  // Always show influencers
+  nodes.filter(n => n.type === 'influencer').forEach(n => visibleNodes.add(n._key));
+  nodeElements.attr('display', d => visibleNodes.has(d._key) ? null : 'none');
+});
+
+// Initial gentle zoom
+svg.call(zoom.transform, d3.zoomIdentity.translate(W*0.05, H*0.02).scale(0.92));
+</script>
+</body>
+</html>
